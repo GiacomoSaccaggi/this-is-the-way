@@ -1,0 +1,16 @@
+[project]
+name = "this-is-the-way"
+version = "0.1.0"
+description = "Forging Python pathfinding algorithms from English pseudocode via AI and secure Docker sandboxing"
+requires-python = ">=3.12"
+dependencies = [
+    "django>=5.1,<5.2",
+    "openai>=1.40,<2",
+]
+
+[build-system]
+requires = ["setuptools>=70"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+py-modules = []
