@@ -1,0 +1,8 @@
+FROM python:3.12-alpine
+
+RUN adduser -D runner
+WORKDIR /sandbox
+COPY runner.py .
+USER runner
+
+ENTRYPOINT ["python", "runner.py"]
