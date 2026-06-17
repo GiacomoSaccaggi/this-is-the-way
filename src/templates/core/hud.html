@@ -1,0 +1,180 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{{ map.name }} — This Is The Way{% endblock %}
+
+{% block content %}
+<div class="hud-container">
+    <section class="editor-panel">
+        <h2 class="panel-title">📡 Pseudocode Terminal</h2>
+
+        <div class="challenge-hints">
+            <div class="hint-box hint-maze active" data-hint="maze">
+                <strong>🏰 Maze Challenge</strong>
+                <p>You know the <em>start</em> but NOT where the exit is. If you hit a dead end you cannot retrace your steps. Describe how to explore without getting stuck.</p>
+            </div>
+            <div class="hint-box hint-ferrari" data-hint="ferrari">
+                <strong>🏎️ Ferrari Challenge</strong>
+                <p>Start and finish are the same (circular). You don't know the track shape ahead. Your pseudocode controls the <em>driving strategy</em>: how far to look ahead, how hard to steer, whether to brake on curves.</p>
+            </div>
+            <div class="hint-box hint-google" data-hint="google">
+                <strong>📍 Google Maps Challenge</strong>
+                <p>You know both start AND end. You don't know which route is shortest. Multiple paths exist — find the optimal one.</p>
+            </div>
+        </div>
+
+        <div class="examples-dropdown-panel">
+            <div class="examples-row">
+                <select id="example-select" class="example-select">
+                    <option value="">📚 Load an example...</option>
+                    <optgroup label="🏰 Maze — find the hidden exit">
+                        <option value="bfs">BFS — explore in waves, check every path</option>
+                        <option value="dfs">DFS — dive deep, backtrack on dead ends</option>
+                    </optgroup>
+                    <optgroup label="🏎️ Ferrari — survive the circuit">
+                        <option value="cautious">Cautious — brake early, never crash</option>
+                        <option value="aggressive">Aggressive — full speed, pray</option>
+                        <option value="smart">Smart — fast but brakes on curves</option>
+                    </optgroup>
+                    <optgroup label="📍 Google Maps — shortest route A→B">
+                        <option value="dijkstra">Dijkstra — cheapest path first</option>
+                        <option value="astar">A* — cheapest + aims toward goal</option>
+                    </optgroup>
+                </select>
+                <button id="load-example-btn" class="btn-load-example">▶ Load</button>
+            </div>
+            <div id="example-hint" class="example-hint"></div>
+        </div>
+
+        <textarea id="pseudocode" class="code-editor" placeholder="Describe your algorithm in plain English or copy one from above..."></textarea>
+        <button id="submit-btn" class="btn-forge">⚒️ FORGE & EXECUTE</button>
+        <div id="status" class="status-bar"></div>
+        <details id="code-output" class="code-reveal" style="display:none">
+            <summary>🔧 Generated Python</summary>
+            <pre><code id="generated-code"></code></pre>
+        </details>
+    </section>
+
+    <section class="map-panel">
+        <h2 class="panel-title">🗺️ Tactical Map</h2>
+        <div class="mode-selector">
+            <button class="mode-btn active" data-mode="maze">🏰 Maze</button>
+            <button class="mode-btn" data-mode="ferrari">🏎️ Ferrari</button>
+            <button class="mode-btn" data-mode="google">📍 Google Maps</button>
+        </div>
+        <div class="maze-controls">
+            <label class="control-label">
+                Complexity: <span id="complexity-val">0.5</span>
+                <input type="range" id="complexity" min="0.1" max="0.9" step="0.1" value="0.5">
+            </label>
+            <button id="regen-btn" class="btn-regen">🔄 New Map</button>
+        </div>
+        <canvas id="grid-canvas"></canvas>
+    </section>
+</div>
+
+<script>
+const EXAMPLES = {
+    bfs: {
+        hint: "🏰 Explores every direction equally. Guaranteed to find the exit if one exists.",
+        code: `Start at the beginning position.
+Use a queue (first-in, first-out).
+Add the start to the queue and mark it visited.
+While the queue is not empty:
+  Take the first element from the queue.
+  If it is the goal, reconstruct and return the path.
+  For each neighbor (up, down, left, right):
+    If the neighbor is inside the grid, not a wall, and not visited:
+      Mark it visited, remember where it came from, add it to the queue.`
+    },
+    dfs: {
+        hint: "🏰 Picks one direction and commits. Fast but might take a long detour to find the exit.",
+        code: `Start at the beginning position.
+Use a stack (last-in, first-out).
+Push the start onto the stack and mark it visited.
+While the stack is not empty:
+  Pop the top element from the stack.
+  If it is the goal, return the path.
+  For each neighbor (up, down, left, right):
+    If the neighbor is valid, not a wall, and not visited:
+      Mark it visited, record where it came from, push it onto the stack.`
+    },
+    cautious: {
+        hint: "🏎️ Slow but safe. Looks far ahead, gentle steering. Almost always finishes the lap.",
+        code: `Drive carefully and safely.
+Look far ahead on the track to anticipate curves.
+Keep a moderate and slow speed.
+Use gentle steering to stay smooth on the track.`
+    },
+    aggressive: {
+        hint: "🏎️ Full throttle, no braking. Will probably crash on the first sharp curve and restart.",
+        code: `Go at maximum speed at all times.
+Do not brake on curves.
+Steer only slightly, trust momentum.
+Look only at the immediate next point.`
+    },
+    smart: {
+        hint: "🏎️ Fast on straights, brakes only when it detects a sharp curve ahead. Best balance.",
+        code: `Look 5 points ahead on the track.
+Steer with moderate aggressiveness.
+Brake when detecting a sharp curve ahead.
+Maintain fast speed on straights, slow down in curves.`
+    },
+    dijkstra: {
+        hint: "📍 Always expands the cheapest route. Finds the shortest path but explores a lot.",
+        code: `Start at the beginning position with cost zero.
+Use a priority queue sorted by total cost so far.
+Add the start with cost 0.
+While the priority queue is not empty:
+  Take the element with the lowest cost.
+  If it is the goal, return the path.
+  For each neighbor (up, down, left, right):
+    Calculate the new cost as current cost plus the step cost.
+    If this neighbor hasn't been visited or this cost is lower than before:
+      Update its cost, record where it came from, add to the priority queue.`
+    },
+    astar: {
+        hint: "📍 Like Dijkstra but also estimates distance to goal. Explores less, finds shortest path faster.",
+        code: `Start at the beginning position.
+Use a priority queue sorted by: cost so far + estimated distance to the goal.
+The estimated distance is the Manhattan distance (|dx| + |dy|) to the end.
+Add the start with priority equal to its distance to the goal.
+While the priority queue is not empty:
+  Take the element with lowest priority (cost + estimate).
+  If it is the goal, return the path.
+  For each neighbor:
+    Calculate new cost as current cost plus step cost.
+    Calculate priority as new cost plus Manhattan distance from neighbor to goal.
+    If neighbor not visited or new cost is better:
+      Update it, record where it came from, add to queue with the new priority.`
+    }
+};
+
+const exSelect = document.getElementById('example-select');
+const exHint = document.getElementById('example-hint');
+const loadBtn = document.getElementById('load-example-btn');
+
+exSelect.addEventListener('change', () => {
+    const ex = EXAMPLES[exSelect.value];
+    exHint.textContent = ex ? ex.hint : '';
+});
+
+loadBtn.addEventListener('click', () => {
+    const ex = EXAMPLES[exSelect.value];
+    if (ex) {
+        document.getElementById('pseudocode').value = ex.code;
+        exHint.textContent = '✓ Loaded!';
+        setTimeout(() => { exHint.textContent = ex.hint; }, 1200);
+    }
+});
+</script>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const GRID = {{ map.grid_json|safe }};
+    const MAP_SLUG = "{{ map.slug }}";
+    const CSRF_TOKEN = "{{ csrf_token }}";
+</script>
+<script src="{% static 'js/simulation.js' %}"></script>
+{% endblock %}
