@@ -1,0 +1,29 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}This Is The Way{% endblock %}</title>
+    <link rel="stylesheet" href="{% static 'css/hud.css' %}">
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <header class="hud-header">
+        <h1 class="hud-title">⟨ THIS IS THE WAY ⟩</h1>
+        <nav class="hud-nav">
+            {% for m in maps %}
+            <a href="{% url 'core:hud_map' m.slug %}" class="nav-link {% if m.slug == map.slug %}active{% endif %}">
+                {{ m.name }}
+            </a>
+            {% endfor %}
+        </nav>
+    </header>
+
+    <main class="hud-main">
+        {% block content %}{% endblock %}
+    </main>
+
+    {% block extra_js %}{% endblock %}
+</body>
+</html>
